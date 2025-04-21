@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 8
+names: ['Green_Balloon', 'Orange_Circle_GShape', 'Orange_Square_GShape', 'Orange_Triangle_Gshape', 'Purple_Balloon', 'Yellow_Circle_GShape', 'Yellow_Square_GShape', 'Yellow_Triangle_Gshape']
+
+roboflow:
+  workspace: caedentaylor
+  project: test-kuvcq
+  version: 7
+  license: CC BY 4.0
+  url: https://universe.roboflow.com/caedentaylor/test-kuvcq/dataset/7
