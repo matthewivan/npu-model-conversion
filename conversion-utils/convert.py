@@ -1,8 +1,8 @@
 import sys
 from rknn.api import RKNN
 
-DATASET_PATH = '../../../datasets/COCO/coco_subset_20.txt'
-DEFAULT_RKNN_PATH = '../model/yolov8.rknn'
+DEFAULT_DATASET_PATH = './datasets/custom_subset.txt'
+DEFAULT_RKNN_PATH = './models/yolov8_default_path.rknn'
 DEFAULT_QUANT = True
 
 def parse_arg():
@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     # Build model
     print('--> Building model')
-    ret = rknn.build(do_quantization=do_quant, dataset=DATASET_PATH)
+    ret = rknn.build(do_quantization=do_quant, dataset=DEFAULT_DATASET_PATH)
     if ret != 0:
         print('Build model failed!')
         exit(ret)
