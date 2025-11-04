@@ -1,3 +1,21 @@
+# Environment Setup
+1. **Install conda**
+   - Follow this guide: https://github.com/conda-forge/miniforge
+2. **Create a conda virtual environment**
+   - ```bash
+     conda create -n rknn-311 python=3.11
+     ```
+3. **Activate conda environment**
+   - ```bash
+     conda activate rknn-311
+     ```
+4. **Setup environment**
+   - Run this command to install all the necessary pip packages and RKNN-Toolkit2 library:
+     ```bash
+     chmod +x setup_conda_environment
+     ./setup_conda_environment
+     ```
+
 # NPU Model Conversion Guide
 
 0. **Configure keys in `model_convert_config.yaml` with the appropriate values**
