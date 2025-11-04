@@ -1,0 +1,10 @@
+#!/bin/sh
+
+set -eu
+
+# Enable pipefail if supported
+(set -o pipefail) 2>/dev/null && set -o pipefail
+
+echo "Training YOLOv8 Model..."
+echo
+python ./conversion-utils/YOLO-model-training/train_yolov8.py

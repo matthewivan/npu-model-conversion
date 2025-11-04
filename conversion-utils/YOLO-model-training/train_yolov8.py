@@ -3,7 +3,7 @@ import os
 import yaml
 from ultralytics import YOLO
 
-CFG_FILE = "./modelTrainConfig.yaml"   # the YAML snippet you showed
+CFG_FILE = "model_convert_config.yaml"
 
 def resolve_cfg_path(cfg_path: str, key: str) -> Path:
     """Read `key` from a YAML file and return an absolute Path."""
@@ -22,11 +22,11 @@ def resolve_cfg_path(cfg_path: str, key: str) -> Path:
 
 # Pull values from your training YAML
 data_path = resolve_cfg_path(CFG_FILE, "data")
-# Optional: also pull model from the same YAML (falls back to a default if missing)
+# Pull model from the same YAML config file (falls back to a default if missing)
 try:
-    model_path = resolve_cfg_path(CFG_FILE, "defaultmodel")
+    model_path = resolve_cfg_path(CFG_FILE, "base_model")
 except Exception:
-    model_path = Path("yolov8n.pt")
+    model_path = Path("./models/yolov8n.pt")
 
 # Train
 model = YOLO(str(model_path))

@@ -4,8 +4,15 @@
 task: detect # (str) YOLO task, i.e. detect, segment, classify, pose
 mode: train # (str) YOLO mode, i.e. train, val, predict, export, track, benchmark
 
+# Convert settings -----------------------------------------------------------
+target: rk3566 # rockchip type (rk3566, rk3568, rk3588, etc.)
+precision: i8 # int8 precision (default). Works great - don't change if unsure.
+
+# Data samples settings ------------------------------------------------------
+subset_interval: 5 # sample every 5th image (or whatever subset_interval is) from val/ into valid_subset.txt for RKNN conversion  
+  
 # Train settings -------------------------------------------------------------------------------------------------------
-defaultmodel: models/yolov8n.pt # default yolov8n model from ultralytics
+base_model: models/yolov8n.pt # default yolov8n model from ultralytics
 model: models/GMU_yolov8n.pt # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
 data: datasets/GMU_Dataset/data.yaml # (str, optional) path to data file, i.e. coco8.yaml
 epochs: 100 # (int) number of epochs to train for

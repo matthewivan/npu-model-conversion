@@ -1,0 +1,46 @@
+#!/bin/sh
+
+# Exits immediately if error found, treats unset variables as an error
+set -eu
+
+# Enable pipefail if supported
+(set -o pipefail) 2>/dev/null && set -o pipefail
+
+export PYTHONPATH=./
+# Set model conversion config file
+CFG_FILE="model_convert_config.yaml"
+
+# Read CFG_FILE and export variables
+eval "$(python3 ./conversion-utils/parse_model_convert_config.py)"
+
+echo "Config:"
+echo "  MODEL_PT                    = $MODEL_PT"
+echo "  DATA_YAML                   = $DATA_YAML"
+echo "  CONVERSION_TARGET           = $CONVERSION_TARGET"
+echo "  CONVERSION_PRECISION        = $CONVERSION_PRECISION"
+echo "  SUBSET_INTERVAL             = $SUBSET_INTERVAL"
+echo "  MODEL_DIR                   = $MODEL_DIR"
+echo "  MODEL_STEM                  = $MODEL_STEM"
+echo "  ONNX_PATH                   = $ONNX_PATH"
+echo "  RKNN_PATH                   = $RKNN_PATH"
+echo "  TRAIN_IMAGES_DIR            = $TRAIN_IMAGES_DIR"
+echo "  VAL_IMAGES_DIR              = $VAL_IMAGES_DIR"
+echo "  TEST_IMAGES_DIR             = $TEST_IMAGES_DIR"
+echo
+
+# Full Conversion Flow (.pt to .rknn)
+
+echo "Exporting PyTorch model to ONNX..."
+python ./ultralytics/engine/exporter.py
+
+echo "Creating Dataset Samples..."
+# Examples: create subsets from any split you want
+python ./conversion-utils/create_subset.py "$VAL_IMAGES_DIR" ./datasets/valid_subset.txt --n "$SUBSET_INTERVAL" --strip-after datasets
+# python ./conversion-utils/create_subset.py "$TRAIN_IMAGES_DIR" ./datasets/train_subset.txt --n 5 --strip-after datasets
+# python ./conversion-utils/create_subset.py "$TEST_IMAGES_DIR"  ./datasets/test_subset.txt  --n 5 --strip-after datasets
+
+echo "Exporting ONNX model to RKNN..."
+python3 ./conversion-utils/convert.py "$ONNX_PATH" "$CONVERSION_TARGET" "$CONVERSION_PRECISION" "$RKNN_PATH"
+
+echo "Done."
+
