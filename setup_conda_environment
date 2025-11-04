@@ -1,0 +1,14 @@
+#!/bin/sh
+
+set -eu
+
+# Enable pipefail if supported
+(set -o pipefail) 2>/dev/null && set -o pipefail
+
+echo "Install necessary pip packages..."
+echo
+pip install -r ./conversion-utils/requirements.txt
+
+echo "Install RKNN-Toolkit2 Library..."
+echo
+sh ./conversion-utils/rknn-toolkit2-setup.sh

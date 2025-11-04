@@ -19,7 +19,7 @@ torchvision==0.17.2
 onnx==1.18.0
 onnxruntime==1.18.0
 onnxsim==0.4.36
-protobuf==3.20.*
+# protobuf==3.20.*
 rich==13.7.1
 pygments==2.19.1
 
