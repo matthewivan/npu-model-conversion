@@ -4,11 +4,14 @@
 task: detect # (str) YOLO task, i.e. detect, segment, classify, pose
 mode: train # (str) YOLO mode, i.e. train, val, predict, export, track, benchmark
 
-# Convert settings -----------------------------------------------------------
+# Convert settings -----------------------------------------------------------------------------------------------------
+# platform target choose from [rk3562, rk3566, rk3568, rk3576, rk3588, rv1126b, rv1109, rv1126, rk1808]
+# dtype choose from [i8, fp] for [rk3562, rk3566, rk3568, rk3576, rk3588, rv1126b]
+# dtype choose from [u8, fp] for [rv1109, rv1126, rk1808]
 target: rk3566 # rockchip type (rk3566, rk3568, rk3588, etc.)
-precision: i8 # int8 precision (default). Works great - don't change if unsure.
+precision: i8 # int8 precision (default). Works great - don't change if unsure. (change to fp for floating point precision)
 
-# Data samples settings ------------------------------------------------------
+# Data samples settings ------------------------------------------------------------------------------------------------
 subset_interval: 5 # sample every 5th image (or whatever subset_interval is) from val/ into valid_subset.txt for RKNN conversion  
   
 # Train settings -------------------------------------------------------------------------------------------------------
