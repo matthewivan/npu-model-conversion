@@ -1,7 +1,7 @@
 import sys
 from rknn.api import RKNN
 
-DEFAULT_DATASET_PATH = './datasets/custom_subset.txt'
+DEFAULT_DATASET_PATH = './datasets/valid_subset.txt'
 DEFAULT_RKNN_PATH = './models/yolov8_default_path.rknn'
 DEFAULT_QUANT = True
 
