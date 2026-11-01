@@ -11,7 +11,8 @@ export PYTHONPATH=./
 CFG_FILE="model_convert_config.yaml"
 
 # Read CFG_FILE and export variables
-eval "$(python3 ./conversion-utils/parse_model_convert_config.py)"
+CONFIG_VARS="$(python3 ./conversion-utils/parse_model_convert_config.py)"
+eval "$CONFIG_VARS"
 
 echo "Config:"
 echo "  MODEL_PT                    = $MODEL_PT"
@@ -30,14 +31,25 @@ echo
 
 # Full Conversion Flow (.pt to .rknn)
 
+if [ "${SKIP_MODEL_CHECKS:-0}" = "1" ]; then
+    echo "Skipping model checks (SKIP_MODEL_CHECKS=1)..."
+else
+    echo "Checking model against config..."
+    python ./conversion-utils/check_model_matches_config.py
+fi
+
 echo "Exporting PyTorch model to ONNX..."
 python ./ultralytics/engine/exporter.py
 
-echo "Creating Dataset Samples..."
-# Examples: create subsets from any split you want
-python ./conversion-utils/create_subset.py "$VAL_IMAGES_DIR" ./datasets/valid_subset.txt --n "$SUBSET_INTERVAL" --strip-after datasets
-# python ./conversion-utils/create_subset.py "$TRAIN_IMAGES_DIR" ./datasets/train_subset.txt --n 5 --strip-after datasets
-# python ./conversion-utils/create_subset.py "$TEST_IMAGES_DIR"  ./datasets/test_subset.txt  --n 5 --strip-after datasets
+if [ "$CONVERSION_PRECISION" = "fp" ]; then
+    echo "Skipping Dataset Samples (not needed for fp precision)..."
+else
+    echo "Creating Dataset Samples..."
+    # Examples: create subsets from any split you want
+    python ./conversion-utils/create_subset.py "$VAL_IMAGES_DIR" ./datasets/valid_subset.txt --n "$SUBSET_INTERVAL" --strip-after datasets
+    # python ./conversion-utils/create_subset.py "$TRAIN_IMAGES_DIR" ./datasets/train_subset.txt --n 5 --strip-after datasets
+    # python ./conversion-utils/create_subset.py "$TEST_IMAGES_DIR"  ./datasets/test_subset.txt  --n 5 --strip-after datasets
+fi
 
 echo "Exporting ONNX model to RKNN..."
 python3 ./conversion-utils/convert.py "$ONNX_PATH" "$CONVERSION_TARGET" "$CONVERSION_PRECISION" "$RKNN_PATH"

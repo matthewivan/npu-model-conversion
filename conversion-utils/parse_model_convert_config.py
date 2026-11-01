@@ -9,35 +9,66 @@ model_pt = cfg.get("model")
 data_yaml = cfg.get("data")
 conversion_target = cfg.get("target")
 conversion_precision = cfg.get("precision")
-subset_interval = str(cfg.get("subset_interval"))
+subset_interval = cfg.get("subset_interval")
 
-if not model_pt or not data_yaml or not conversion_target or not conversion_precision or not subset_interval:
-    print("echo 'ERROR: model/data not found in YAML'", file=sys.stderr)
+# Calibration images are only needed for quantized (i8/u8) models
+needs_dataset = conversion_precision != "fp"
+
+required = {"model": model_pt, "target": conversion_target, "precision": conversion_precision}
+if needs_dataset:
+    required.update({"data": data_yaml, "subset_interval": subset_interval})
+
+missing = [key for key, value in required.items() if value in (None, "")]
+if missing:
+    print(f"ERROR: {', '.join(missing)} not found in {CFG}", file=sys.stderr)
+    sys.exit(1)
+
+if needs_dataset and not os.path.isfile(data_yaml):
+    print(f"ERROR: data file '{data_yaml}' not found", file=sys.stderr)
     sys.exit(1)
 
 # Normalize
 model_pt = os.path.normpath(model_pt)
-data_yaml = os.path.normpath(data_yaml)
+data_yaml = os.path.normpath(data_yaml) if data_yaml else ""
 conversion_target = os.path.normpath(conversion_target)
 conversion_precision = os.path.normpath(conversion_precision)
-subset_interval = os.path.normpath(subset_interval)
+subset_interval = "" if subset_interval is None else os.path.normpath(str(subset_interval))
 
 model_dir  = os.path.normpath(os.path.dirname(model_pt) or ".")
 model_stem = os.path.splitext(os.path.basename(model_pt))[0]
 onnx_path  = os.path.join(model_dir, f"{model_stem}.onnx")
-rknn_path  = os.path.join(model_dir, f"{model_stem}.rknn")
+rknn_path  = os.path.join(model_dir, f"{model_stem}_{conversion_target}.rknn")
 
-# Dataset root = folder containing data.yaml
-data_yaml_abs = os.path.abspath(data_yaml)
-dataset_root  = os.path.dirname(data_yaml_abs)
+def resolve_split(data: dict, dataset_root: str, key: str, default_dirs: list[str]) -> str:
+    """Return a split's images folder, trying data.yaml's path first (same rules as Ultralytics)."""
+    value = data.get(key)
+    if isinstance(value, list):
+        value = value[0] if value else None
 
-train_images = os.path.join(dataset_root, "train", "images")
-valid_images = os.path.join(dataset_root, "valid", "images")
-test_images  = os.path.join(dataset_root, "test",  "images")
+    candidates = []
+    if value:
+        root = os.path.join(dataset_root, str(data.get("path") or ""))
+        candidates.append(os.path.join(root, value))
+        if value.startswith("../"):
+            candidates.append(os.path.join(root, value[3:]))
+    candidates += [os.path.join(dataset_root, d) for d in default_dirs]
 
-# Fallback for some configs that use 'val/' instead of 'valid/'
-if not os.path.isdir(valid_images):
-    valid_images = os.path.join(dataset_root, "val", "images")
+    for candidate in candidates:
+        if os.path.isdir(candidate):
+            return os.path.normpath(candidate)
+    return os.path.normpath(candidates[0])
+
+train_images = valid_images = test_images = ""
+if data_yaml and os.path.isfile(data_yaml):
+    with open(data_yaml, "r", encoding="utf-8") as f:
+        data = yaml.safe_load(f) or {}
+
+    # Dataset root = folder containing data.yaml
+    dataset_root = os.path.dirname(os.path.abspath(data_yaml))
+
+    train_images = resolve_split(data, dataset_root, "train", ["train/images", "images/train"])
+    valid_images = resolve_split(data, dataset_root, "val", ["valid/images", "val/images", "images/val"])
+    test_images  = resolve_split(data, dataset_root, "test", ["test/images", "images/test"])
 
 def sh_escape(s: str) -> str:
     return "'" + s.replace("'", "'\"'\"'") + "'"

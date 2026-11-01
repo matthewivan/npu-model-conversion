@@ -18,44 +18,43 @@
 
 # NPU Model Conversion Guide
 
-0. **Configure keys in `model_convert_config.yaml` with the appropriate values**
-   
+1. **Configure keys in `model_convert_config.yaml` with the appropriate values**
+
    Paths should be relative to the repository's **top-level directory** (e.g. `datasets/GMU_Dataset/data.yaml`)
    ``` yaml
-     # Required for training a custom YOLOv8 model
+     # Used for both training and conversion
      data: datasets/your_dataset_folder/data.yaml   # YOLO data config file
+     imgsz: 640                                     # (int | list) image size. For conversion, this must match the size your model was trained at
+     device: 0                                      # (int | str | list, optional) device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
+
+     # Required for training a custom YOLOv8 model
+     base_model: models/yolov8n.pt                  # pretrained YOLOv8 model to start training from
      epochs: 100                                    # (int) number of epochs to train for
      batch: 16                                      # (int) number of images per batch (-1 for AutoBatch)
-     imgsz: 640                                     # (int | list) input images size as int for train and val modes, or list[h,w] for predict and export modes
      cache: False                                   # (bool) True/ram, disk or False. Use cache for data loading
-     device: 0                                      # (int | str | list, optional) device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
-   
+
      # Required for conversion (YOLOv8 .pt to .rknn)
+     model: models/your_model.pt                    # path to your trained YOLOv8 .pt file
      target: rk3566                                 # your specific NPU target chip
      precision: i8                                  # e.g., i8 / fp
      subset_interval: 5                             # how often to sample images for calibration
-     model: models/your_model.pt                    # path to your trained YOLOv8 .pt file
-     data: datasets/your_dataset_folder/data.yaml   # YOLO data config file
-     epochs: 100                                    # epochs used for training
-     batch: 16                                      # (int) number of images per batch (-1 for AutoBatch)
-     imgsz: 640                                     # image size used for training
-     cache: False                                   # (bool) True/ram, disk or False. Use cache for data loading
-     device: 0                                      # (int | str | list, optional) device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
      ```
 
 2. **Add your dataset**
-   - Move or copy your **YOLOv8 dataset folder** into the `datasets/` directory.  
-   - This folder **must contain**:
-     - `data.yaml`
-     - `train/`, `valid/`, and `test/` subfolders
+   - Move or copy your **YOLOv8 dataset folder** into the `datasets/` directory.
+   - This folder **must contain** `data.yaml`, and the `train` and `val` paths in `data.yaml` must point to your image folders (e.g. `valid/images`, or `images/val`).
+   - Image filenames can't contain spaces, because RKNN-Toolkit2 treats a space in the calibration list as a separator.
    - Edit `model_convert_config.yaml` and set:
      - `data` (e.g. `data: datasets/GMU_Dataset/data.yaml`)
+   - If you only have a `.pt` model and no dataset, set `precision: fp` and skip this step. Quantized models (`i8`) need calibration images.
 
 3. **Get your YOLOv8 `.pt` model**
-   - **If you already have a trained model**:  
+   - Only YOLOv8 models are supported. Conversion uses the Ultralytics version bundled in this repository, which can't load newer architectures such as YOLO11.
+   - **If you already have a trained model**:
      1. Move or copy your `.pt` file into the `models/` folder.
    - **If you need to train a model**:
      1. Edit `model_convert_config.yaml` and set:
+        - `base_model`
         - `epochs`
         - `batch`
         - `imgsz`
@@ -66,14 +65,15 @@
         chmod +x train_custom_yolo_model
         ./train_custom_yolo_model
         ```
-     3. After training, move the `.pt` file from the latest `runs/detect` folder to the `models/` folder. (The command line will show its exact location. The folder should contain best.pt and last.pt)
+     3. After training, move `best.pt` from the `weights` folder printed at the end of training to the `models/` folder, and give it a unique name so the next model doesn't overwrite it.
 
 4. **Prepare the conversion script**
-   -  Edit `model_convert_config.yaml` and set:
-        - `model` (e.g. `model: models/GMU_yolov8n.pt`)
-        - `target`
-        - `precision`
-        - `subset_interval`
+   - Edit `model_convert_config.yaml` and set:
+     - `model` (e.g. `model: models/GMU_yolov8n.pt`)
+     - `target`
+     - `precision`
+     - `subset_interval`
+   - Check that `data` and `imgsz` still match this model.
    - From the repository’s **top-level directory**, run:
      ```bash
      chmod +x convert_yolo_to_rknn
@@ -84,19 +84,27 @@
      ```bash
      ./convert_yolo_to_rknn
      ```
+   - The conversion stops if the model's class names don't match `data.yaml`, or if `imgsz` differs from the size the model was trained at. If the difference is intentional (e.g. calibrating a pretrained COCO model on your own images), run:
+     ```bash
+     SKIP_MODEL_CHECKS=1 ./convert_yolo_to_rknn
+     ```
 
 6. **Find your RKNN model**
-   - The generated `.rknn` file will appear in the `models/` folder with the same name as your `.pt` model.
+   - The generated `.rknn` file will appear in the `models/` folder as `<model name>_<target>.rknn` (e.g. `GMU_yolov8n_rk3566.rknn`). Converting the same model for the same target again overwrites it.
 
 # Test NPU Model
 
 1. git clone https://github.com/matthewivan/rknn-npu-setup.git
 
-2. follow the instructions to setup the rknn npu.
+2. follow the instructions to setup the rknn npu. Use a `librknnrt.so` version that matches the RKNN-Toolkit2 version used for conversion (2.3.2). The sample output below shows the warning you get when they differ.
 
 3. copy a couple images from `npu-model-conversion/datasets/your_dataset_name/test/` into `rknn-npu-setup/npu_inference_test/images/`.
 
-4. copy your class names from `npu-model-conversion/datasets/your_dataset_name/data.yaml` into the `CLASSES` tuple in the `detect_from_image.py` python script.
+4. copy your `.rknn` model into `rknn-npu-setup/npu_inference_test/cv_models/`, then edit these values in the `detect_from_image.py` python script:
+   - `CLASSES`: your class names from `npu-model-conversion/datasets/your_dataset_name/data.yaml`, in the same order
+   - `IMG_SIZE`: the `imgsz` you converted with (e.g. `(640, 640)`)
+   - `model_path`: the path to your `.rknn` model
+   - `target`: the `target` you converted for
 
 5. run `python detect_from_image.py` and the results should look something like this:
 

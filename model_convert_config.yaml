@@ -16,8 +16,8 @@ subset_interval: 5 # sample every 5th image (or whatever subset_interval is) fro
   
 # Train settings -------------------------------------------------------------------------------------------------------
 base_model: models/yolov8n.pt # default yolov8n model from ultralytics
-model: models/GMU_yolov8n.pt # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
-data: datasets/GMU_Dataset/data.yaml # (str, optional) path to data file, i.e. coco8.yaml
+model: models/yolov8n_initial_buoy.pt # (str, optional) path to model file, i.e. yolov8n.pt, yolov8n.yaml
+data: datasets/big-boat-little-boat-v1/data.yaml # (str, optional) path to data file, i.e. coco8.yaml
 epochs: 100 # (int) number of epochs to train for
 time: # (float, optional) number of hours to train for, overrides epochs if supplied
 patience: 100 # (int) epochs to wait for no observable improvement for early stopping of training
@@ -26,7 +26,7 @@ imgsz: 640 # (int | list) input images size as int for train and val modes, or l
 save: True # (bool) save train checkpoints and predict results
 save_period: -1 # (int) Save checkpoint every x epochs (disabled if < 1)
 cache: False # (bool) True/ram, disk or False. Use cache for data loading
-device: 0 # (int | str | list, optional) device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
+device: cpu # (int | str | list, optional) device to run on, i.e. cuda device=0 or device=0,1,2,3 or device=cpu
 workers: 8 # (int) number of worker threads for data loading (per RANK if DDP)
 project: # (str, optional) project name
 name: # (str, optional) experiment name, results saved to 'project/name' directory

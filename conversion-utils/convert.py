@@ -56,7 +56,7 @@ if __name__ == '__main__':
 
     # Build model
     print('--> Building model')
-    ret = rknn.build(do_quantization=do_quant, dataset=DEFAULT_DATASET_PATH)
+    ret = rknn.build(do_quantization=do_quant, dataset=DEFAULT_DATASET_PATH if do_quant else None)
     if ret != 0:
         print('Build model failed!')
         exit(ret)
