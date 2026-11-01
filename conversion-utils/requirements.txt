@@ -10,6 +10,7 @@ tqdm==4.66.5
 pandas==2.2.2
 seaborn==0.13.2
 psutil==7.1.2
+setuptools<82  # rknn-toolkit2 imports pkg_resources, which newer setuptools removed
 
 # Torch (pick a known pair)
 torch==2.2.2
