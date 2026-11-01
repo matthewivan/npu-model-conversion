@@ -1,3 +1,47 @@
+# Quick Start: Train and Convert
+
+Complete the [Environment Setup](#environment-setup) first, then run everything below from the repository's **top-level directory**. See the [NPU Model Conversion Guide](#npu-model-conversion-guide) for more detail and other options.
+
+1. **Put your YOLOv8 dataset folder inside `datasets/`**
+
+   The folder name can't contain spaces, and `data.yaml` must be directly inside it:
+   ```
+   npu-model-conversion/
+   └── datasets/
+       └── your_dataset_folder/
+           ├── data.yaml
+           ├── train/
+           │   ├── images/
+           │   └── labels/
+           └── valid/
+               ├── images/
+               └── labels/
+   ```
+   ```bash
+   cp -r /path/to/your_dataset_folder datasets/
+   ```
+
+2. **Set these keys in `model_convert_config.yaml`**
+   ``` yaml
+     data: datasets/your_dataset_folder/data.yaml   # your dataset
+     project: runs/detect                           # folder to save training runs in
+     name: your_model_name                          # subfolder for this training run
+     model: models/your_model_name.pt               # where you'll copy the trained model in step 3
+     device: 0                                      # 0 for the first NVIDIA GPU, or cpu if you don't have one
+     target: rk3566                                 # your specific NPU target chip
+     subset_interval: 5                             # calibrate on every 5th validation image (use 1 for a small dataset)
+   ```
+
+3. **Train and convert**
+   ```bash
+   conda activate rknn-311
+   ./train_custom_yolo_model
+   cp runs/detect/your_model_name/weights/best.pt models/your_model_name.pt
+   ./convert_yolo_to_rknn
+   ```
+
+Your model will be at `models/your_model_name_rk3566.rknn`, with the last part matching your `target`.
+
 # Environment Setup
 1. **Install conda**
    - Follow this guide: https://github.com/conda-forge/miniforge
@@ -32,13 +76,25 @@
      epochs: 100                                    # (int) number of epochs to train for
      batch: 16                                      # (int) number of images per batch (-1 for AutoBatch)
      cache: False                                   # (bool) True/ram, disk or False. Use cache for data loading
+     project: runs/detect                           # folder to save training runs in
+     name: your_model_name                          # subfolder for this training run
 
      # Required for conversion (YOLOv8 .pt to .rknn)
-     model: models/your_model.pt                    # path to your trained YOLOv8 .pt file
+     model: models/your_model_name.pt               # path to your trained YOLOv8 .pt file (the new model outputted by the converter)
      target: rk3566                                 # your specific NPU target chip
      precision: i8                                  # e.g., i8 / fp
      subset_interval: 5                             # how often to sample images for calibration
      ```
+
+   These are the keys to change for each new model. Change only the values and keep the comments after them:
+
+   | Key | Set it to | Why |
+   |---|---|---|
+   | `subset_interval` | `1` for a small dataset, otherwise `5` or higher | Calibration uses the validation image count divided by this value. `5` on 41 images would calibrate on just 8 |
+   | `model` | `models/your_model_name.pt` | Name of your new model, which is fine to set before the file exists |
+   | `data` | `datasets/your_dataset_folder/data.yaml` | Don't put quotes around part of the path, because they're read literally and give `data file ... not found` |
+   | `project` | `runs/detect` | Otherwise runs go to the folder in your Ultralytics settings, which can be outside this repository |
+   | `name` | `your_model_name` | Gives the run a predictable folder name |
 
 2. **Add your dataset**
    - Move or copy your **YOLOv8 dataset folder** into the `datasets/` directory.
@@ -59,13 +115,21 @@
         - `batch`
         - `imgsz`
         - `cache`
+        - `project`
+        - `name`
         - `device` (set to `cpu` if training and/or converting without an NVIDIA GPU)
-     2. From the repository’s **top-level directory**, run:
+     2. Check the class names in your dataset's `data.yaml`. They get saved into the model, so fix any spelling mistakes before training.
+     3. From the repository’s **top-level directory**, run:
         ```bash
         chmod +x train_custom_yolo_model
         ./train_custom_yolo_model
         ```
-     3. After training, move `best.pt` from the `weights` folder printed at the end of training to the `models/` folder, and give it a unique name so the next model doesn't overwrite it.
+        Training is slow without a GPU: 100 epochs on a 145-image dataset took an estimated 2 hours on a CPU.
+     4. After training, copy `best.pt` to the `models/` folder and give it a unique name so the next model doesn't overwrite it:
+        ```bash
+        cp runs/detect/your_model_name/weights/best.pt models/your_model_name.pt
+        ```
+        If `runs/detect/your_model_name` already exists, for example from a rerun, Ultralytics saves to a numbered folder instead (e.g. `your_model_name2`). Use the path printed at the end of training.
 
 4. **Prepare the conversion script**
    - Edit `model_convert_config.yaml` and set:
@@ -84,13 +148,14 @@
      ```bash
      ./convert_yolo_to_rknn
      ```
+   - To also build for another chip, set `target` in `model_convert_config.yaml` (e.g. `target: rk3588`) and run the command again. Each target gets its own `.rknn` file.
    - The conversion stops if the model's class names don't match `data.yaml`, or if `imgsz` differs from the size the model was trained at. If the difference is intentional (e.g. calibrating a pretrained COCO model on your own images), run:
      ```bash
      SKIP_MODEL_CHECKS=1 ./convert_yolo_to_rknn
      ```
 
 6. **Find your RKNN model**
-   - The generated `.rknn` file will appear in the `models/` folder as `<model name>_<target>.rknn` (e.g. `GMU_yolov8n_rk3566.rknn`). Converting the same model for the same target again overwrites it.
+   - The generated `.rknn` file will appear in the `models/` folder as `<model name>_<target>.rknn` (e.g. `GMU_yolov8n_rk3566.rknn`), next to `<model name>.onnx`. Converting the same model for the same target again overwrites it.
 
 # Test NPU Model
 
